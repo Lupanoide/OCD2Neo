@@ -1,0 +1,51 @@
+SELECT DISTINCT ?persona ?cognome ?nome ?info
+?dataNascita ?luogoNascita ?genere  ?inizioMandato ?fineMandato
+?collegio  COUNT(DISTINCT ?madatoCamera) as ?numeroMandati ?aggiornamento ?nomeGruppo ?sigla ?commissione
+WHERE {
+?persona ocd:rif_mandatoCamera ?mandato; a foaf:Person.
+
+## deputato
+?d a ocd:deputato; ocd:aderisce ?aderisce;
+ocd:rif_leg <http://dati.camera.it/ocd/legislatura.rdf/repubblica_18>;
+ocd:rif_mandatoCamera ?mandato.
+OPTIONAL{?d dc:description ?info}
+
+##anagrafica
+?d foaf:surname ?cognome; foaf:gender ?genere;foaf:firstName ?nome.
+OPTIONAL{
+?persona <http://purl.org/vocab/bio/0.1/Birth> ?nascita.
+?nascita <http://purl.org/vocab/bio/0.1/date> ?dataNascita; 
+rdfs:label ?nato; ocd:rif_luogo ?luogoNascitaUri. 
+?luogoNascitaUri dc:title ?luogoNascita. 
+}
+##aggiornamento del sistema
+OPTIONAL{?d <http://lod.xdams.org/ontologies/ods/modified> ?aggiornamento.}
+## mandato
+?mandato ocd:rif_elezione ?elezione.  
+OPTIONAL{?mandato ocd:endDate ?fineMandato.}
+OPTIONAL{?mandato ocd:startDate ?inizioMandato.}
+ 
+## totale mandati
+?persona ocd:rif_mandatoCamera ?madatoCamera.
+ 
+## elezione
+?elezione dc:coverage ?collegio.
+
+## adesione a gruppo
+OPTIONAL{
+  ?aderisce ocd:rif_gruppoParlamentare ?gruppo.
+  ?gruppo <http://purl.org/dc/terms/alternative> ?sigla.
+  ?gruppo dc:title ?nomeGruppo.
+}
+
+MINUS{?aderisce ocd:endDate ?fineAdesione}
+
+## organo
+OPTIONAL{
+?d ocd:membro ?membro.?membro ocd:rif_organo ?organo.
+?organo dc:title ?commissione .
+}
+
+MINUS{?membro ocd:endDate ?fineMembership}
+}
+		

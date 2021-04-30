@@ -1,0 +1,25 @@
+select distinct ?atto ?tipoRuolo ?tipo ?numeroAtto ?date ?titolo ?nome ?cognome where {{
+{{
+ ?atto  ?ruolo ?deputato;
+ dc:date ?date;
+ dc:identifier    ?numeroAtto;
+ dc:title ?titolo.
+ OPTIONAL{{?atto dc:type ?tipo }}
+ FILTER(?ruolo = ocd:primo_firmatario)
+}}
+UNION{{
+ ?atto  ?ruolo ?deputato;
+ dc:date ?date;
+ dc:identifier    ?numeroAtto;
+ dc:title ?titolo.
+ OPTIONAL{{?atto dc:type ?tipo }}
+ FILTER(?ruolo = ocd:altro_firmatario)
+}}
+
+?ruolo rdfs:label ?tipoRuolo.
+## seleziono deputato nella legislatura
+?deputato foaf:surname ?cognome; foaf:firstName ?nome; ocd:rif_leg <http://dati.camera.it/ocd/legislatura.rdf/repubblica_18>
+FILTER(REGEX(?cognome, "{cognome}",'i'))
+
+
+}}
