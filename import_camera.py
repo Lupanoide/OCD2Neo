@@ -9,6 +9,7 @@ class ImportCamera:
         neo_url = r"bolt://localhost:7687"
         self.neo4j_client = self.get_neo_client(neo_url)
         self.sparql = SPARQLWrapper(r'http://dati.camera.it/sparql')
+        self.sparql.setTimeout(timeout=(180))
 
     def read_query_file(self, query_file):
         with open(query_file, "r") as f:
@@ -46,8 +47,9 @@ class ImportCamera:
     def get_atti_per_deputato(self, deputatiL, annoL):
         query_atti_sparql = self.read_query_file(os.path.join(os.path.dirname(__file__), 'query_atti.sparql'))
         query_atti_cypher = self.read_query_file(os.path.join(os.path.dirname(__file__), 'query_atti.cypher'))
-        get_index = deputatiL.index({"cognome":"D'AMBROSIO","nome":"GIUSEPPE"})
-        for deputato in deputatiL[get_index:]:
+        #get_index = deputatiL.index({"cognome":"LOTTI","nome":"LUCA"})
+        for deputato in deputatiL:
+        #for deputato in deputatiL[get_index:]:
             for anno in annoL:
                 param_query = query_atti_sparql.format(cognome=deputato['cognome'],nome=deputato['nome'],anno=anno)
                 print(param_query)
