@@ -4,7 +4,7 @@ import os
 import time
 
 
-class ImportSenato:
+class ImportCamera:
     def __init__(self):
         neo_url = r"bolt://localhost:7687"
         self.neo4j_client = self.get_neo_client(neo_url)
@@ -46,8 +46,8 @@ class ImportSenato:
     def get_atti_per_deputato(self, deputatiL, annoL):
         query_atti_sparql = self.read_query_file(os.path.join(os.path.dirname(__file__), 'query_atti.sparql'))
         query_atti_cypher = self.read_query_file(os.path.join(os.path.dirname(__file__), 'query_atti.cypher'))
-        ## "ELIO VITO"
-        for deputato in deputatiL:
+        get_index = deputatiL.index({"cognome":"D'AMBROSIO","nome":"GIUSEPPE"})
+        for deputato in deputatiL[get_index:]:
             for anno in annoL:
                 param_query = query_atti_sparql.format(cognome=deputato['cognome'],nome=deputato['nome'],anno=anno)
                 print(param_query)
@@ -87,6 +87,6 @@ class ImportSenato:
 
 
 if __name__ == '__main__':
-    oo = ImportSenato()
+    oo = ImportCamera()
     oo.run()
     del oo

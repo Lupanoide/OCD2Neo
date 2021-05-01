@@ -48,4 +48,5 @@ OPTIONAL{
 
 MINUS{?membro ocd:endDate ?fineMembership}
 }
+ORDER BY DESC(?cognome) ASC(?nome)
 		
