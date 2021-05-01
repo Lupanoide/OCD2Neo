@@ -22,12 +22,11 @@ class ImportSenato:
             session.run(query)
 
     def get_anagrafica(self):
-        lista_cognomi_deputati = []
+        lista_deputati = []
         query_anagrafica_sparql = self.read_query_file(os.path.join( os.path.dirname(__file__),'query_anagrafica.sparql'))
         query_anagrafica_cypher = self.read_query_file(os.path.join( os.path.dirname(__file__),'query_anagrafica.cypher'))
         self.sparql.setQuery(query_anagrafica_sparql)
         self.sparql.setReturnFormat(JSON)
-        self.sparql.setOnlyConneg
         results = self.sparql.query().convert()
 
         print("INIZIO CARICAMENTO ANAGRAFICA")
@@ -39,28 +38,29 @@ class ImportSenato:
                                                  dataNascita = result['dataNascita']['value'], inizioMandato = result['inizioMandato']['value'],
                                                  fineMandato = result.get('fineMandato.value', '' ) )
             self.ingest_into_neo4j(query)
-            lista_cognomi_deputati.append(result['cognome']['value'])
+            lista_deputati.append({"cognome": result['cognome']['value'],"nome":result['nome']['value']})
         print("FINE CARICAMENTO ANAGRAFICA")
-        return lista_cognomi_deputati
+        return lista_deputati
 
-    def get_atti_per_deputato(self, cognomi_deputatiL):
+    def get_atti_per_deputato(self, deputatiL, annoL):
         query_atti_sparql = self.read_query_file(os.path.join(os.path.dirname(__file__), 'query_atti.sparql'))
         query_atti_cypher = self.read_query_file(os.path.join(os.path.dirname(__file__), 'query_atti.cypher'))
-        for cognome in cognomi_deputatiL:
-            param_query = query_atti_sparql.format(cognome=cognome)
-            print(param_query)
-            self.sparql.setQuery(param_query)
-            self.sparql.setReturnFormat(JSON)
-            results = self.sparql.query().convert()
+        for deputato in deputatiL:
+            for anno in annoL:
+                param_query = query_atti_sparql.format(cognome=deputato['cognome'],nome=deputato['nome'],anno=anno)
+                print(param_query)
+                self.sparql.setQuery(param_query)
+                self.sparql.setReturnFormat(JSON)
+                results = self.sparql.query().convert()
 
-            print("INIZIO CARICAMENTO ATTI")
-            if results["results"]["bindings"]:
-                for result in results["results"]["bindings"]:
-                    query = query_atti_cypher.format(nome = result['nome']['value'], cognome = result['cognome']['value'], atto = result['atto']['value'],
-                                                     titolo = result['titolo']['value'].replace("'","\\'"), numeroAtto = result['numeroAtto']['value'], tipo = result['tipo']['value'],
-                                                     tipoRuolo = result['tipoRuolo']['value'], date = result['date']['value'] )
-                    self.ingest_into_neo4j(query)
-            print("FINE CARICAMENTO ATTI")
+                print("INIZIO CARICAMENTO ATTI")
+                if results["results"]["bindings"]:
+                    for result in results["results"]["bindings"]:
+                        query = query_atti_cypher.format(nome = result['nome']['value'], cognome = result['cognome']['value'], atto = result['atto']['value'],
+                                                         titolo = result['titolo']['value'].replace("'","\\'"), numeroAtto = result['numeroAtto']['value'], tipo = result['tipo']['value'],
+                                                         tipoRuolo = result['tipoRuolo']['value'], date = result['date']['value'] )
+                        self.ingest_into_neo4j(query)
+                print("FINE CARICAMENTO ATTI")
 
 
 
@@ -74,9 +74,11 @@ class ImportSenato:
 
 
     def run(self):
+        annoL = ["^2018","^2019","^2020","2021"]
         self.apply_constraints()
-        cognomi_deputatiL = self.get_anagrafica()
-        self.get_atti_per_deputato(cognomi_deputatiL)
+        deputatiL = self.get_anagrafica()
+        print()
+        self.get_atti_per_deputato(deputatiL, annoL)
 
 
 
