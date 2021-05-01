@@ -46,6 +46,7 @@ class ImportSenato:
     def get_atti_per_deputato(self, deputatiL, annoL):
         query_atti_sparql = self.read_query_file(os.path.join(os.path.dirname(__file__), 'query_atti.sparql'))
         query_atti_cypher = self.read_query_file(os.path.join(os.path.dirname(__file__), 'query_atti.cypher'))
+        ## "ELIO VITO"
         for deputato in deputatiL:
             for anno in annoL:
                 param_query = query_atti_sparql.format(cognome=deputato['cognome'],nome=deputato['nome'],anno=anno)
@@ -76,7 +77,7 @@ class ImportSenato:
 
 
     def run(self):
-        annoL = ["^2018","^2019","^2020","2021"]
+        annoL = ["^2018","^2019","^2020","^2021"]
         self.apply_constraints()
         deputatiL = self.get_anagrafica()
         self.get_atti_per_deputato(deputatiL, annoL)
