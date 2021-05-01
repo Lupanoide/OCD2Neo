@@ -1,6 +1,7 @@
 from neo4j import GraphDatabase
 from SPARQLWrapper import SPARQLWrapper, JSON
 import os
+import time
 
 
 class ImportSenato:
@@ -53,14 +54,15 @@ class ImportSenato:
                 self.sparql.setReturnFormat(JSON)
                 results = self.sparql.query().convert()
 
-                print("INIZIO CARICAMENTO ATTI")
+                print(f"INIZIO CARICAMENTO ATTI PER DEPUTATO {deputato['nome']} {deputato['cognome']} per l'anno {anno[1:]}")
                 if results["results"]["bindings"]:
                     for result in results["results"]["bindings"]:
                         query = query_atti_cypher.format(nome = result['nome']['value'], cognome = result['cognome']['value'], atto = result['atto']['value'],
                                                          titolo = result['titolo']['value'].replace("'","\\'"), numeroAtto = result['numeroAtto']['value'], tipo = result['tipo']['value'],
                                                          tipoRuolo = result['tipoRuolo']['value'], date = result['date']['value'] )
                         self.ingest_into_neo4j(query)
-                print("FINE CARICAMENTO ATTI")
+                print(f"FINE CARICAMENTO ATTI PER DEPUTATO {deputato['nome']} {deputato['cognome']} per l'anno {anno[1:]}")
+                time.sleep(3)
 
 
 
@@ -77,7 +79,6 @@ class ImportSenato:
         annoL = ["^2018","^2019","^2020","2021"]
         self.apply_constraints()
         deputatiL = self.get_anagrafica()
-        print()
         self.get_atti_per_deputato(deputatiL, annoL)
 
 
