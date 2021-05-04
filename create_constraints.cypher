@@ -4,3 +4,4 @@ CREATE CONSTRAINT persona_uri IF NOT EXISTS ON (p:Persona) ASSERT p.uri IS UNIQU
 CREATE CONSTRAINT luogo_loc IF NOT EXISTS ON (luogo:Luogo) ASSERT luogo.loc IS UNIQUE;
 CREATE CONSTRAINT commissione_name IF NOT EXISTS ON (comm:Commissione) ASSERT comm.name IS UNIQUE;
 CREATE CONSTRAINT atto_uri IF NOT EXISTS ON (a:Atto) ASSERT a.uri IS UNIQUE;
+CREATE CONSTRAINT votazione_uri IF NOT EXISTS ON (v:Votazione) ASSERT v.uri IS UNIQUE;

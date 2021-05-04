@@ -1,0 +1,26 @@
+SELECT distinct * WHERE {{
+?votazione a ocd:votazione;
+dc:title ?denominazione;
+dc:description ?descrizione;
+ocd:votanti ?votanti;
+ocd:richiestaFiducia ?richiestaFiducia;
+ocd:approvato ?approvato;
+ocd:favorevoli ?favorevoli;
+ocd:contrari ?contrari;
+ocd:astenuti ?astenuti;
+ocd:approvato ?esitoVotazione;
+ocd:astenuti ?astenuti;
+ocd:maggioranza ?maggioranza;
+ocd:presenti ?presenti;
+ocd:richiestaFiducia ?richiestaFiducia;
+ocd:votazioneFinale ?votazioneFinale;
+ocd:votazioneSegreta ?votazioneSegreta;
+dc:type ?tipoVotazione;
+dc:description ?descrizione;
+dc:identifier ?numeroVotazione;
+dc:date ?data.
+FILTER(REGEX(?data,"{giorno}",'i'))
+OPTIONAL {{?votazione ocd:rif_aic ?atto}}
+OPTIONAL {{?votazione ocd:rif_attoCamera ?attoCamera}}
+}}
+ORDER BY DESC(?data)

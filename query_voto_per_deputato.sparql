@@ -1,0 +1,37 @@
+select distinct ?cognome ?nome ?votazione ?data ?descrizione ?numeroVotazione
+?espressione ?esitoVotazione ?astenuti ?favorevoli ?contrari ?maggioranza ?presenti ?richiestaFiducia ?votanti ?votazioneFinale ?votazioneSegreta ?tipoVotazione
+?infoAssenza where {{
+
+## seleziono deputato nella legislatura
+?deputato foaf:surname ?cognome; foaf:firstName ?nome; ocd:rif_leg
+<http://dati.camera.it/ocd/legislatura.rdf/repubblica_18>
+FILTER(REGEX(?cognome,"{cognome}",'i'))
+FILTER(REGEX(?cognome,"{nome}",'i'))
+
+## voti espressi dal deputato
+?voto a ocd:voto;
+   ocd:rif_votazione ?votazione;
+   dc:type ?espressione;
+   ocd:rif_deputato ?deputato.
+   FILTER(REGEX(?espressione,"{espressione}",'i'))
+OPTIONAL{{?voto dc:description ?infoAssenza}}
+
+
+## informazione sulla relativa votazione
+?votazione a ocd:votazione;
+   ocd:approvato ?esitoVotazione;
+   ocd:astenuti ?astenuti;
+   ocd:favorevoli ?favorevoli;
+   ocd:contrari ?contrari;
+   ocd:maggioranza ?maggioranza;
+   ocd:presenti ?presenti;
+   ocd:richiestaFiducia ?richiestaFiducia;
+   ocd:votanti ?votanti;
+   ocd:votazioneFinale ?votazioneFinale;
+   ocd:votazioneSegreta ?votazioneSegreta;
+   dc:type ?tipoVotazione;
+   dc:description ?descrizione;
+   dc:identifier ?numeroVotazione;
+	dc:date ?data. FILTER(REGEX(?data,"{giorno}",'i'))
+
+}} ORDER BY ?numeroVotazione
