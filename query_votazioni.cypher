@@ -42,7 +42,7 @@ atto IN CASE WHEN $atto = '' THEN []
   MERGE (v)-[:SI_RIFERISCE]->(a)
 )
 FOREACH (
-attoCamera IN CASE WHEN $attoCamera = '' THEN []
+attoCamera IN CASE WHEN $attoCamera = {} THEN []
   ELSE [$attoCamera]
   END |
   MERGE (a:Atto {uri: $attoCamera})

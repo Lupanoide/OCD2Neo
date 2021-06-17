@@ -1,0 +1,15 @@
+select distinct ?atto ?numero ?iniziativa ?presentazione ?titolo ?fase ?dataIter ?dataApprovazione ?approvato ?votazioneFinale {
+  	  ?atto a ocd:atto;
+          ocd:iniziativa ?iniziativa;
+          dc:identifier ?numero;
+          ocd:rif_leg <http://dati.camera.it/ocd/legislatura.rdf/repubblica_18>;
+          dc:date ?presentazione;
+          dc:title ?titolo; ocd:rif_statoIter ?statoIter .
+  		  ?statoIter  dc:title ?fase ; dc:date ?dataIter .
+          OPTIONAL{
+        	  ?votazione a ocd:votazione; ocd:rif_attoCamera ?atto;
+              ocd:approvato ?approvato;
+              ocd:votazioneFinale ?votazioneFinale;
+              dc:date ?dataApprovazione.
+          }
+	  } ORDER BY ?presentazione ?dataIter

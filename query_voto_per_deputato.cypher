@@ -1,0 +1,5 @@
+MERGE (v:Votazione {uri: $uri})
+MERGE (p:Persona {fullname: $nome + ' ' + $cognome})
+MERGE (voto:Voto {name: $espressione + ' ' + $uri})
+MERGE (p)-[:HA_VOTATO]->(voto)
+MERGE (voto)-[:RELATIVO_ALLA_VOTAZIONE]->(v)
