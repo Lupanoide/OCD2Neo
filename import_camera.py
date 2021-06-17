@@ -1,3 +1,4 @@
+from urllib.error import HTTPError
 from neo4j import GraphDatabase
 from SPARQLWrapper import SPARQLWrapper, JSON
 import os
@@ -11,6 +12,7 @@ class ImportCamera:
         self.neo4j_client = self.get_neo_client(neo_url)
         self.sparql = SPARQLWrapper(r'http://dati.camera.it/sparql')
         self.sparql.setTimeout(timeout=(180))
+        self.seconds_timeout_sparql_httperror = 5
 
     def read_query_file(self, query_file):
         with open(query_file, "r") as f:
@@ -27,12 +29,31 @@ class ImportCamera:
     def get_result_sparql_query(self, sparql_query):
         self.sparql.setQuery(sparql_query)
         self.sparql.setReturnFormat(JSON)
-        results = self.sparql.query().convert()
-        output = None
-        if results["results"]["bindings"]:
-            output = results["results"]["bindings"]
-        return output
+        try:
+            results = self.sparql.query().convert()
+            output = None
+            if results["results"]["bindings"]:
+                output = results["results"]["bindings"]
+            return output
+        except HTTPError:
+            print(f'Richiesta rigettata. Nuovo tentativo tra {self.seconds_timeout_sparql_httperror} secondi')
+            time.sleep(self.seconds_timeout_sparql_httperror)
+            self.get_result_sparql_query(sparql_query)
+        except Exception as e:
+            raise e
 
+    def get_mese_anno_list(self):
+        mesi = ["12","11","10","09","08","07","06","05","04","03","02","01"]
+        anni = ["2021","2020","2019","2018"]
+        resultL = []
+        for anno in anni:
+            if anno == "2021":
+                mesi = mesi[6:]
+            elif anno == "2018":
+                mesi = mesi[:-2]
+            for mese in mesi:
+                resultL.append("^"+anno+mese)
+        return resultL
 
     def get_anagrafica(self):
         lista_deputati = []
@@ -40,15 +61,14 @@ class ImportCamera:
         query_anagrafica_cypher = self.read_query_file(os.path.join( os.path.dirname(__file__),'query_anagrafica.cypher'))
         query_sparql_result = self.get_result_sparql_query(query_anagrafica_sparql)
 
-
         print("INIZIO CARICAMENTO ANAGRAFICA")
         for result in query_sparql_result:
             self.ingest_into_neo4j(query_anagrafica_cypher, persona = result['persona']['value'],luogoNascita=result['luogoNascita']['value'],
-                                                 collegio = result['collegio']['value'], lista=result.get('sigla',{}).get('value',''), commissione=result.get('commissione',{}).get('value',''),
-                                                 numeroMandati = result['numeroMandati']['value'], genere= result['genere']['value'],info = result.get('info',{}).get('value',''),
+                                                 collegio = result['collegio']['value'], lista=result.get('sigla',{}).get('value'), commissione=result.get('commissione',{}).get('value'),
+                                                 numeroMandati = result['numeroMandati']['value'], genere= result['genere']['value'],info = result.get('info',{}).get('value'),
                                                  nomeGruppo = result['nomeGruppo']['value'], nome = result['nome']['value'], cognome = result['cognome']['value'],
                                                  dataNascita = result['dataNascita']['value'], inizioMandato = result['inizioMandato']['value'],
-                                                 fineMandato = result.get('fineMandato',{}).get('value','') )
+                                                 fineMandato = result.get('fineMandato',{}).get('value') )
             if not {"cognome": result['cognome']['value'],"nome":result['nome']['value']} in lista_deputati:
                 lista_deputati.append({"cognome": result['cognome']['value'],"nome":result['nome']['value']})
         print("FINE CARICAMENTO ANAGRAFICA")
@@ -57,24 +77,18 @@ class ImportCamera:
     def get_atti_per_deputato(self, deputatiL, annoL):
         query_atti_sparql = self.read_query_file(os.path.join(os.path.dirname(__file__), 'query_atti.sparql'))
         query_atti_cypher = self.read_query_file(os.path.join(os.path.dirname(__file__), 'query_atti.cypher'))
-        #get_index = deputatiL.index({"cognome":"LOTTI","nome":"LUCA"})
         for deputato in deputatiL:
-        #for deputato in deputatiL[get_index:]:
             for anno in annoL:
                 param_query = query_atti_sparql.format(cognome=deputato['cognome'],nome=deputato['nome'],anno=anno)
-                print(param_query)
+                print(f"INIZIO CARICAMENTO ATTI PER DEPUTATO {deputato['nome']} {deputato['cognome']} per l'anno {anno[1:]}")
                 query_sparql_result = self.get_result_sparql_query(param_query)
 
-                print(f"INIZIO CARICAMENTO ATTI PER DEPUTATO {deputato['nome']} {deputato['cognome']} per l'anno {anno[1:]}")
                 if query_sparql_result:
                     for result in query_sparql_result:
                         self.ingest_into_neo4j(query_atti_cypher, nome = result['nome']['value'], cognome = result['cognome']['value'], atto = result['atto']['value'],
                                                          titolo = result['titolo']['value'].replace("'","\\'"), numeroAtto = result['numeroAtto']['value'], tipo = result['tipo']['value'],
                                                          tipoRuolo = result['tipoRuolo']['value'], date = result['date']['value'] )
                 print(f"FINE CARICAMENTO ATTI PER DEPUTATO {deputato['nome']} {deputato['cognome']} per l'anno {anno[1:]}")
-                time.sleep(3)
-
-
 
     def apply_constraints(self):
         query_constraints_cypher = self.read_query_file(os.path.join( os.path.dirname(__file__),'create_constraints.cypher'))
@@ -86,17 +100,14 @@ class ImportCamera:
     def get_votazioni_per_deputato(self, espressioneL, anno_mese_giornoL, deputatiL):
         query_votazione_sparql = self.read_query_file(os.path.join(os.path.dirname(__file__), 'query_voto_per_deputato.sparql'))
         query_votazione_cypher = self.read_query_file(os.path.join(os.path.dirname(__file__), 'query_voto_per_deputato.cypher'))
-        get_index = deputatiL.index({"cognome": "SAPIA", "nome": "FRANCESCO"})
-        for deputato in deputatiL[get_index:]:
-        #for deputato in deputatiL:
+        for deputato in deputatiL:
             for espressione in espressioneL:
-                for giorno in anno_mese_giornoL:
-                    param_query = query_votazione_sparql.format(nome = deputato['nome'], cognome= deputato['cognome'], giorno = giorno, espressione= espressione)
-                    print(deputato, giorno, espressione)
+                for mese in anno_mese_giornoL:
+                    param_query = query_votazione_sparql.format(nome = deputato['nome'], cognome= deputato['cognome'], giorno = mese, espressione= espressione)
+                    print(f"INSERIMENTO VOTAZIONE {espressione} DELL'ONOREVOLE {deputato['nome'] + ' ' + deputato['cognome']} per il mese {mese[1:]}, ")
                     query_sparql_result = self.get_result_sparql_query(param_query)
                     if query_sparql_result:
                         for result in query_sparql_result:
-                            print(result)
                             self.ingest_into_neo4j(query_votazione_cypher, uri = result['votazione']['value'],nome = result['nome']['value'],
                                                    cognome = result['cognome']['value'], espressione= result['espressione']['value'])
 
@@ -105,19 +116,18 @@ class ImportCamera:
         query_votazione_cypher = self.read_query_file(os.path.join(os.path.dirname(__file__), "query_votazioni.cypher"))
         for giorno in anno_mese_giornoL:
             param_query = query_votazione_sparql.format(giorno=giorno)
-            print(param_query)
             query_sparql_result = self.get_result_sparql_query(param_query)
             if query_sparql_result:
                 for result in query_sparql_result:
-                    print(result)
+                    print(f"INGESTIONE VOTAZIONI DEL giorno {giorno[1:]}")
                     self.ingest_into_neo4j(query_votazione_cypher, uri = result['votazione']['value'], denominazione = result['denominazione']['value'],
                                            numeroVotazione = result['numeroVotazione']['value'], descrizione = result['descrizione']['value'],
                                            votanti = result['votanti']['value'],favorevoli = result['favorevoli']['value'], contrari = result['contrari']['value'],
                                            astenuti = result['astenuti']['value'], maggioranza = result['maggioranza']['value'], presenti = result['presenti']['value'],
                                            tipoVotazione = result['tipoVotazione']['value'],data=result['data']['value'],richiestaFiducia = result['richiestaFiducia']['value'],
                                            approvato = result['approvato']['value'], esitoVotazione = result['esitoVotazione']['value'], votazioneFinale = result['votazioneFinale']['value'],
-                                           votazioneSegreta = result['votazioneSegreta']['value'], atto= result.get('atto',{}).get('value',''), attoCamera = result.get('attoCamera',{}).get('value',''))
-                    print(f" VOTAZIONE {result['numeroVotazione']['value']} del giorno {giorno} CARICATA")
+                                           votazioneSegreta = result['votazioneSegreta']['value'], atto= result.get('atto',{}).get('value'), attoCamera = result.get('attoCamera',{}).get('value'))
+                    print(f" VOTAZIONE {result['numeroVotazione']['value']} del giorno {giorno[1:]} CARICATA")
 
     def get_ogni_atto(self):
         query_ogni_atto_sparql = self.read_query_file(os.path.join(os.path.dirname(__file__), "query_ogni_atto.sparql"))
@@ -129,18 +139,15 @@ class ImportCamera:
                 self.ingest_into_neo4j(query_ogni_atto_cypher, uri = result['atto']['value'], titolo= result['titolo']['value'],
                                        numero= result['numero']['value'], fase= result['fase']['value'],
                                        iniziativa= result['iniziativa']['value'], presentazione = result['presentazione']['value'],
-                                       dataIter = result['dataIter']['value'], approvato= result.get('approvato',{}).get('value',''),
-                                       votazioneFinale=result.get('votazioneFinale', {}).get('value', ''),
-                                       dataApprovazione= result.get('dataApprovazione',{}).get('value','')
+                                       dataIter = result['dataIter']['value'], approvato= result.get('approvato',{}).get('value'),
+                                       votazioneFinale=result.get('votazioneFinale', {}).get('value'),
+                                       dataApprovazione= result.get('dataApprovazione',{}).get('value')
                 )
             print("FINE CARICAMENTO OGNI ATTO")
 
-
-
-
     def run(self):
         espressioneL = ["Favorevole","Contrario", "Astensione", "Non ha votato"]
-        tmp_list = pd.date_range('2018-03-23','2021-06-25',freq='1m').strftime("%Y%m").tolist()
+        tmp_list = pd.date_range('2018-03-23','2021-06-25',freq='24H').strftime("%Y%m%d").tolist()
         anno_mese_giornoL = ["^" + elem for elem in tmp_list][::-1]
         annoL = ["^2018","^2019","^2020","^2021"]
         self.apply_constraints()
@@ -148,9 +155,7 @@ class ImportCamera:
         #self.get_atti_per_deputato(deputatiL, annoL)
         #self.get_ogni_atto()
         #self.get_votazioni(anno_mese_giornoL)
-        self.get_votazioni_per_deputato(espressioneL, anno_mese_giornoL, deputatiL)
-
-
+        self.get_votazioni_per_deputato(espressioneL, self.get_mese_anno_list(), deputatiL)
 
 
 
