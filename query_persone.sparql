@@ -1,0 +1,35 @@
+SELECT DISTINCT ?persona ?cognome ?nome ?genere ?dataNascita ?luogoNascita ?nomeGruppo ?sigla ?date ?end_date ?motivoTermine
+WHERE {
+?persona ocd:rif_mandatoCamera ?mandato; a foaf:Person.
+## deputato
+?d a ocd:deputato; ocd:aderisce ?aderisce;
+ocd:rif_leg <http://dati.camera.it/ocd/legislatura.rdf/repubblica_18>;
+ocd:rif_mandatoCamera ?mandato.
+OPTIONAL{
+  ?aderisce ocd:startDate ?date.
+  ?aderisce ocd:rif_gruppoParlamentare ?gruppo.
+  ?gruppo <http://purl.org/dc/terms/alternative> ?sigla.
+  ?gruppo dc:title ?nomeGruppo.
+}
+OPTIONAL{?aderisce ocd:endDate ?end_date.
+         ?aderisce ocd:motivoTermine ?motivoTermine.}
+
+##anagrafica
+?d foaf:surname ?cognome; foaf:gender ?genere;foaf:firstName ?nome.
+OPTIONAL{
+?persona <http://purl.org/vocab/bio/0.1/Birth> ?nascita.
+?nascita <http://purl.org/vocab/bio/0.1/date> ?dataNascita;
+rdfs:label ?nato; ocd:rif_luogo ?luogoNascitaUri.
+?luogoNascitaUri dc:title ?luogoNascita.
+}
+
+##aggiornamento del sistema
+OPTIONAL{?d <http://lod.xdams.org/ontologies/ods/modified> ?aggiornamento.}
+
+}   ORDER BY ?persona
+
+
+
+
+
+
