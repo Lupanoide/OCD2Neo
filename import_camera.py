@@ -190,7 +190,7 @@ class ImportCamera:
                 if 'end_date' not in result:
                     result['end_date'] = {'value' : datetime.strftime(datetime.now(), "%Y%m%d")}
                 personaDiz[result['nome']['value'] + ' ' + result['cognome']['value']]['partiti'].append(
-                    {'start_date': datetime.strptime(result['date']['value'], "%Y%m%d") , 'end_date' : datetime.strptime(result['end_date']['value'] , "%Y%m%d" ) - timedelta(days=1), 'lista': result['sigla']['value'],} )
+                    {'start_date': datetime.strptime(result['date']['value'], "%Y%m%d") , 'end_date' : datetime.strptime(result['end_date']['value'] , "%Y%m%d" ) - timedelta(days=1), 'lista': result['sigla']['value']} )
         return personaDiz
 
     def clean_data(self):
