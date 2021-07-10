@@ -5,7 +5,7 @@ from SPARQLWrapper.SPARQLExceptions import EndPointNotFound
 import os
 import time
 import pandas as pd
-from datetime import datetime, timedelta
+from datetime import datetime
 
 
 class ImportCamera:
@@ -56,13 +56,13 @@ class ImportCamera:
             return output
 
     def get_maggioranze_legislature(self):
-        return {"Conte I": {'start_date': datetime(2018,6,1,0,0),'end_date': datetime(2019,9,4,0,0),'maggioranza': ['M5S','LEGA'], 'person': ['SILVIA BENEDETTI', 'MARIO ALEJANDRO BORGHESE', 'SALVATORE CAIATA', 'ANDREA CECCONI','FAUSTO GUILHERME LONGO','ANTONIO TASSO' ,'CATELLO VITIELLO', 'RENATE GEBHARD','ALBRECHT PLANGGER','EMANUELA ROSSINI', 'MANFRED SCHULLIAN']},
-                "Conte II": {'start_date':datetime(2019,9,5,0,0), 'end_date': datetime(2021,1,13,00), 'maggioranza': ['LEU','PD', 'IV','M5S'], 'person':['RENATE GEBHARD','ALBRECHT PLANGGER','EMANUELA ROSSINI', 'MANFRED SCHULLIAN']},
+        return {"Conte I": {'start_date': datetime(2018,5,31,0,0),'end_date': datetime(2019,9,4,0,0),'maggioranza': ['M5S','LEGA'], 'person': ['SILVIA BENEDETTI', 'MARIO ALEJANDRO BORGHESE', 'SALVATORE CAIATA', 'ANDREA CECCONI','FAUSTO GUILHERME LONGO','ANTONIO TASSO' ,'CATELLO VITIELLO', 'RENATE GEBHARD','ALBRECHT PLANGGER','EMANUELA ROSSINI', 'MANFRED SCHULLIAN']},
+                "Conte II": {'start_date': datetime(2019,9,5,0,0), 'end_date': datetime(2021,1,13,00), 'maggioranza': ['LEU','PD', 'IV','M5S'], 'person':['RENATE GEBHARD','ALBRECHT PLANGGER','EMANUELA ROSSINI', 'MANFRED SCHULLIAN']},
                 "Conte II bis": {'start_date': datetime(2021,1,14,00), 'end_date': datetime(2021,2,12,0,0), 'maggioranza': ['LEU', 'PD', 'M5S'], 'person':['MICHELA ROSTAN', 'ANTONIO LOMBARDO', 'MARA LAPIA', 'FABIO BERARDINI', 'CARLO UGO DE GIROLAMO' ,'MARCO RIZZONE', 'NICOLA ACUNZO', 'DANIELA CARDINALE', 'CARMELO LO MONTE', 'RENATA POLVERINI', 'RENATE GEBHARD','ALBRECHT PLANGGER','EMANUELA ROSSINI', 'MANFRED SCHULLIAN','MARIO ALEJANDRO BORGHESE','FAUSTO GUILHERME LONGO','ANTONIO TASSO','NICOLA ACUNZO','PIERA AIELLO','DANIELA CARDINALE','ALESSANDRA ERMELLINO','MARA LAPIA','CARMELO LO MONTE', 'BRUNO TABACCI','NADIA APRILE','SILVIA BENEDETTI','ROSALBA DE GIORGI','LORENZO FIORAMONTI','RAFFAELE TRANO']},
                 "Draghi":{'start_date':datetime(2021,2,13,0,0), 'end_date': datetime.now(), 'maggioranza': ['M5S','LEGA','PD','FI','IV','CI','LEU'], 'person': ['MARIO ALEJANDRO BORGHESE','FAUSTO GUILHERME LONGO','ANTONIO TASSO', 'RENATE GEBHARD','ALBRECHT PLANGGER','EMANUELA ROSSINI', 'MANFRED SCHULLIAN','NICOLA ACUNZO','PIERA AIELLO','DANIELA CARDINALE','ALESSANDRA ERMELLINO','MARA LAPIA','CARMELO LO MONTE', 'BRUNO TABACCI','ALESSANDRO COLUCCI','MAURIZIO ENZO LUPI', 'EUGENIO SANGREGORIO','RENZO TONDO','NUNZIO ANGIOLA','ENRICO COSTA','RICCARDO MAGI', 'ANDREA CECCONI','LORENZO FIORAMONTI','ALESSANDRO FUSACCHIA','ANTONIO LOMBARDO','ROSSELLA MURONI','NADIA APRILE','ROSALBA DE GIORGI','MICHELA ROSTAN' ]}}
 
     def get_mese_anno_list(self):
-        tmp_list = pd.date_range('2018-03-23', '2021-06-25', freq='1m').strftime("%Y%m").tolist()
+        tmp_list = pd.date_range('2018-03-23', datetime.strftime(datetime.now(), "%Y-%m-%d"), freq='1m').strftime("%Y%m").tolist()
         resultL = ["^" + elem for elem in tmp_list][::-1]
         return resultL
 
@@ -83,7 +83,9 @@ class ImportCamera:
     def get_atti_per_deputato(self, deputatiDiz, annoL):
         query_atti_sparql = self.read_query_file(os.path.join(os.path.dirname(__file__), 'query_atti.sparql'))
         query_atti_cypher = self.read_query_file(os.path.join(os.path.dirname(__file__), 'query_atti.cypher'))
+        #get_index = list(deputatiDiz.keys()).index("PAOLO GIULIODORI")
         for deputato in deputatiDiz.keys():
+        #for deputato in list(deputatiDiz.keys())[get_index:]:
             for anno in annoL:
                 param_query = query_atti_sparql.format(cognome=deputatiDiz[deputato]['cognome'],nome=deputatiDiz[deputato]['nome'],anno=anno)
                 print(f"INIZIO CARICAMENTO ATTI PER DEPUTATO {deputatiDiz[deputato]['nome']} {deputatiDiz[deputato]['cognome']} per l'anno {anno[1:]}")
@@ -107,27 +109,33 @@ class ImportCamera:
     def get_fazione_politica(self, data, partiti_per_deputato_diz):
         data = datetime.strptime(data, '%Y%m%d')
         output = ''
+        if data < datetime(2018,5,31,0,0):
+            return 'precedenteAlPrimoGovernoConte'
         fullname = partiti_per_deputato_diz['nome'] + ' ' + partiti_per_deputato_diz['cognome']
         governi = self.get_maggioranze_legislature()
         for governo in governi.keys():
             if governi[governo]['start_date'] <= data <= governi[governo]['end_date']:
                 if fullname in governi[governo]['person']:
                     output = "ProvenienteDaMaggioranza"
+                    break
                 else:
                     for item in partiti_per_deputato_diz['partiti']:
                         if item['start_date'] <= data <= item['end_date']:
                             if item['lista'] in governi[governo]['maggioranza']:
                                 output = "ProvenienteDaMaggioranza"
+                                break
                             else:
                                 output = "ProvenienteDaOpposizione"
+                                break
         return output
+
 
     def get_votazioni_per_deputato(self, espressioneL, anno_mese_giornoL, deputatiDiz):
         query_votazione_sparql = self.read_query_file(os.path.join(os.path.dirname(__file__), 'query_voto_per_deputato.sparql'))
         query_votazione_cypher = self.read_query_file(os.path.join(os.path.dirname(__file__), 'query_voto_per_deputato.cypher'))
-        get_index = list(deputatiDiz.keys()).index("ROBERTO FICO")
-        #for deputato in deputatiDiz.keys():
-        for deputato in list(deputatiDiz.keys())[get_index:]:
+        #get_index = list(deputatiDiz.keys()).index("DOMENICO GIANNETTA")
+        for deputato in deputatiDiz.keys():
+        #for deputato in list(deputatiDiz.keys())[get_index:]:
             for espressione in espressioneL:
                 for giorno in anno_mese_giornoL:
                     param_query = query_votazione_sparql.format(nome = deputatiDiz[deputato]['nome'], cognome= deputatiDiz[deputato]['cognome'], giorno = giorno, espressione= espressione)
@@ -157,21 +165,23 @@ class ImportCamera:
                                            votazioneSegreta = result['votazioneSegreta']['value'], atto= result.get('atto',{}).get('value',''), attoCamera = result.get('attoCamera',{}).get('value',''))
                     print(f" VOTAZIONE {result['numeroVotazione']['value']} del giorno {giorno[1:]} CARICATA")
 
-    def get_ogni_atto(self):
+    def get_ogni_atto(self, annoL):
         query_ogni_atto_sparql = self.read_query_file(os.path.join(os.path.dirname(__file__), "query_ogni_atto.sparql"))
         query_ogni_atto_cypher = self.read_query_file(os.path.join(os.path.dirname(__file__), "query_ogni_atto.cypher"))
-        query_sparql_result = self.get_result_sparql_query(query_ogni_atto_sparql)
-        if query_sparql_result:
-            print("INIZIO CARICAMENTO OGNI ATTO")
-            for result in query_sparql_result:
-                self.ingest_into_neo4j(query_ogni_atto_cypher, uri = result['atto']['value'], titolo= result['titolo']['value'],
-                                       numero= result['numero']['value'], fase= result['fase']['value'],
-                                       iniziativa= result['iniziativa']['value'], presentazione = result['presentazione']['value'],
-                                       dataIter = result['dataIter']['value'], approvato= result.get('approvato',{}).get('value',''),
-                                       votazioneFinale=result.get('votazioneFinale', {}).get('value',''),
-                                       dataApprovazione= result.get('dataApprovazione',{}).get('value','')
-                )
-            print("FINE CARICAMENTO OGNI ATTO")
+        for anno in annoL:
+            param_query = query_ogni_atto_sparql.format(anno=anno)
+            query_sparql_result = self.get_result_sparql_query(param_query)
+            if query_sparql_result:
+                print(f"INIZIO CARICAMENTO OGNI ATTO PER L'ANNO {anno[1:]}")
+                for result in query_sparql_result:
+                    self.ingest_into_neo4j(query_ogni_atto_cypher, uri = result['atto']['value'], titolo= result['titolo']['value'],
+                                           numero= result['numero']['value'], fase= result['fase']['value'],
+                                           iniziativa= result['iniziativa']['value'], presentazione = result['presentazione']['value'],
+                                           dataIter = result['dataIter']['value'], approvato= result.get('approvato',{}).get('value',''),
+                                           votazioneFinale=result.get('votazioneFinale', {}).get('value',''),
+                                           dataApprovazione= result.get('dataApprovazione',{}).get('value','')
+                    )
+                print(f"FINE CARICAMENTO OGNI ATTO PER L'ANNO {anno[1:]}")
 
     def get_persona(self):
         personaDiz = {}
@@ -190,7 +200,7 @@ class ImportCamera:
                 if 'end_date' not in result:
                     result['end_date'] = {'value' : datetime.strftime(datetime.now(), "%Y%m%d")}
                 personaDiz[result['nome']['value'] + ' ' + result['cognome']['value']]['partiti'].append(
-                    {'start_date': datetime.strptime(result['date']['value'], "%Y%m%d") , 'end_date' : datetime.strptime(result['end_date']['value'] , "%Y%m%d" ) - timedelta(days=1), 'lista': result['sigla']['value']} )
+                    {'start_date': datetime.strptime(result['date']['value'], "%Y%m%d") , 'end_date' : datetime.strptime(result['end_date']['value'] , "%Y%m%d" ), 'lista': result['sigla']['value'],} )
         return personaDiz
 
     def clean_data(self):
@@ -204,16 +214,16 @@ class ImportCamera:
 
     def run(self):
         espressioneL = ["Favorevole","Contrario", "Astensione", "Non ha votato"]
-        tmp_list = pd.date_range('2018-03-23','2021-06-25',freq='24H').strftime("%Y%m%d").tolist()
+        tmp_list = pd.date_range('2018-03-23',datetime.strftime(datetime.now(), "%Y-%m-%d"),freq='24H').strftime("%Y%m%d").tolist()
         anno_mese_giornoL = ["^" + elem for elem in tmp_list][::-1]
         annoL = ["^2018","^2019","^2020","^2021"]
         self.apply_constraints()
-        #personaDiz = self.get_persona()
-        #self.get_anagrafica()
-        #self.get_atti_per_deputato(personaDiz, annoL)
-        #self.get_ogni_atto()
-        #self.get_votazioni(anno_mese_giornoL)
-        #self.get_votazioni_per_deputato(espressioneL, self.get_mese_anno_list(), personaDiz)
+        personaDiz = self.get_persona()
+        self.get_anagrafica()
+        self.get_atti_per_deputato(personaDiz, annoL)
+        self.get_ogni_atto(annoL)
+        self.get_votazioni(anno_mese_giornoL)
+        self.get_votazioni_per_deputato(espressioneL, self.get_mese_anno_list(), personaDiz)
         self.clean_data()
 
 
